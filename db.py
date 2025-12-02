@@ -121,24 +121,61 @@ def actualizar_consulta(consulta_id, datos, db_path='hospital_guard.db'):
     conn.commit()
     conn.close()
 
-def eliminar_consulta(consulta_id, db_path='hospital_guard.db'):
-    """Elimina una consulta por su ID."""
-    conn = sqlite3.connect(db_path)
-    c = conn.cursor()
-    c.execute('DELETE FROM consultas WHERE id=?', (consulta_id,))
-    conn.commit()
-    conn.close()
+def eliminar_consulta(consulta_id):
+    with get_db_connection() as conn:
+        c = conn.cursor()
+        c.execute('DELETE FROM consultas WHERE id=?', (consulta_id,))
+        conn.commit()
 
-# Personal
+def consultas():
+    """Devuelve todas las consultas con datos de paciente."""
+    with get_db_connection() as conn:
+        c = conn.cursor()
+        c.execute('''SELECT c.id, p.nombre || " " || p.apellido, c.fecha_consulta, c.motivo, c.prioridad, c.medico, c.estado 
+                     FROM consultas c JOIN pacientes p ON c.paciente_id = p.id ORDER BY c.fecha_consulta DESC''')
+        return c.fetchall()
 
-def agregar_personal(datos, db_path='hospital_guard.db'):
-    """Agrega un miembro del personal."""
-    conn = sqlite3.connect(db_path)
-    c = conn.cursor()
-    c.execute('''INSERT INTO personal (nombre, apellido, especialidad, matricula, turno, estado) VALUES (?, ?, ?, ?, ?, ?)''', (
-        datos['nombre'], datos['apellido'], datos['especialidad'], datos['matricula'], datos['turno'], datos['estado']))
-    conn.commit()
-    conn.close()
+def consultas_filtrado(valor):
+    with get_db_connection() as conn:
+        c = conn.cursor()
+        c.execute('''SELECT c.id, p.nombre || " " || p.apellido, c.fecha_consulta, c.motivo, c.prioridad, c.medico, c.estado 
+                     FROM consultas c JOIN pacientes p ON c.paciente_id = p.id 
+                     WHERE p.nombre LIKE ? OR p.apellido LIKE ? OR c.motivo LIKE ? OR c.medico LIKE ? 
+                     ORDER BY c.fecha_consulta DESC''', (f'%{valor}%', f'%{valor}%', f'%{valor}%', f'%{valor}%'))
+        return c.fetchall()
+
+def consultas_en_espera_lista():
+    with get_db_connection() as conn:
+        c = conn.cursor()
+        c.execute('''SELECT c.id, p.nombre || " " || p.apellido, c.motivo, c.prioridad, datetime(c.fecha_consulta) as tiempo_espera 
+                     FROM consultas c JOIN pacientes p ON c.paciente_id = p.id 
+                     WHERE c.estado = 'En espera' 
+                     ORDER BY CASE c.prioridad WHEN 'Alta' THEN 1 WHEN 'Media' THEN 2 WHEN 'Baja' THEN 3 END, c.fecha_consulta''')
+        return c.fetchall()
+
+def consultas_recientes():
+    with get_db_connection() as conn:
+        c = conn.cursor()
+        c.execute('''SELECT c.id, p.nombre || " " || p.apellido, c.fecha_consulta, c.motivo, c.prioridad, c.estado 
+                     FROM consultas c JOIN pacientes p ON c.paciente_id = p.id 
+                     ORDER BY c.fecha_consulta DESC LIMIT 10''')
+        return c.fetchall()
+
+def actualizar_estado_consulta(consulta_id, nuevo_estado):
+    with get_db_connection() as conn:
+        c = conn.cursor()
+        c.execute('UPDATE consultas SET estado=? WHERE id=?', (nuevo_estado, consulta_id))
+        conn.commit()
+
+# --- Personal ---
+
+def agregar_personal(datos):
+    with get_db_connection() as conn:
+        c = conn.cursor()
+        c.execute('''INSERT INTO personal (nombre, apellido, especialidad, matricula, turno, estado) 
+                     VALUES (?, ?, ?, ?, ?, ?)''', (
+            datos['nombre'], datos['apellido'], datos['especialidad'], datos['matricula'], datos['turno'], datos['estado']))
+        conn.commit()
 
 def obtener_personal(db_path='hospital_guard.db'):
     """Devuelve una lista de todo el personal."""
