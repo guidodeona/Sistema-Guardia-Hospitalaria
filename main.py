@@ -1028,11 +1028,7 @@ class HospitalGuardApp:
 
     def grafico_consultas_por_prioridad(self, ax):
         """Dibuja un gráfico de barras de consultas por prioridad en el eje ax."""
-        conn = db.sqlite3.connect('hospital_guard.db')
-        c = conn.cursor()
-        c.execute('''SELECT prioridad, COUNT(*) as cantidad FROM consultas WHERE date(fecha_consulta) = date('now') GROUP BY prioridad''')
-        prioridades = c.fetchall()
-        conn.close()
+        prioridades = db.obtener_estadisticas_prioridad()
         prioridades_labels = [p[0] for p in prioridades]
         cantidades = [p[1] for p in prioridades]
         ax.clear()
@@ -1042,11 +1038,7 @@ class HospitalGuardApp:
 
     def grafico_recursos_por_estado(self, ax):
         """Dibuja un gráfico de torta de recursos por estado en el eje ax."""
-        conn = db.sqlite3.connect('hospital_guard.db')
-        c = conn.cursor()
-        c.execute('''SELECT estado, COUNT(*) as cantidad FROM recursos GROUP BY estado''')
-        recursos_estado = c.fetchall()
-        conn.close()
+        recursos_estado = db.obtener_estadisticas_recursos_estado()
         labels = [r[0] for r in recursos_estado]
         sizes = [r[1] for r in recursos_estado]
         colors = ['#2ecc71','#e67e22','#e74c3c','#95a5a6']
@@ -1060,20 +1052,30 @@ class LoginWindow:
         self.root = root
         self.on_login_success = on_login_success
         self.root.title("Login - Sistema de Guardia Hospitalaria")
-        self.root.geometry("400x300")
-        self.root.configure(bg='#f0f0f0')
-        self.frame = tk.Frame(self.root, padx=20, pady=20, bg='#f0f0f0')
-        self.frame.pack(expand=True)
-        ttk.Label(self.frame, text="Usuario:").grid(row=0, column=0, pady=10, sticky=tk.W)
-        self.user_entry = ttk.Entry(self.frame, width=30)
-        self.user_entry.grid(row=0, column=1, pady=10)
-        ttk.Label(self.frame, text="Contraseña:").grid(row=1, column=0, pady=10, sticky=tk.W)
-        self.pass_entry = ttk.Entry(self.frame, width=30, show='*')
-        self.pass_entry.grid(row=1, column=1, pady=10)
-        self.login_btn = ttk.Button(self.frame, text="Iniciar Sesión", command=self.login)
-        self.login_btn.grid(row=2, column=0, columnspan=2, pady=10)
-        self.reg_btn = ttk.Button(self.frame, text="Registrarse", command=self.registro)
-        self.reg_btn.grid(row=3, column=0, columnspan=2, pady=5)
+        self.root.geometry("400x350")
+        self.style = tb.Style(theme="cosmo")
+        
+        # Frame principal centrado
+        self.frame = tb.Frame(self.root, padding=30)
+        self.frame.place(relx=0.5, rely=0.5, anchor=tk.CENTER)
+        
+        # Título
+        tb.Label(self.frame, text="Iniciar Sesión", font=('Helvetica', 18, 'bold'), bootstyle="primary").pack(pady=(0, 20))
+        
+        # Usuario
+        tb.Label(self.frame, text="Usuario:", bootstyle="secondary").pack(fill=tk.X, pady=(0, 5))
+        self.user_entry = tb.Entry(self.frame, width=30)
+        self.user_entry.pack(fill=tk.X, pady=(0, 15))
+        
+        # Contraseña
+        tb.Label(self.frame, text="Contraseña:", bootstyle="secondary").pack(fill=tk.X, pady=(0, 5))
+        self.pass_entry = tb.Entry(self.frame, width=30, show='*')
+        self.pass_entry.pack(fill=tk.X, pady=(0, 20))
+        
+        # Botones
+        tb.Button(self.frame, text="Ingresar", bootstyle="success", command=self.login, width=20).pack(pady=5)
+        tb.Button(self.frame, text="Registrarse", bootstyle="outline-primary", command=self.registro, width=20).pack(pady=5)
+
     def login(self):
         usuario = self.user_entry.get()
         password = self.pass_entry.get()
@@ -1082,6 +1084,7 @@ class LoginWindow:
             self.on_login_success()
         else:
             messagebox.showerror("Error", "Usuario o contraseña incorrectos")
+
     def registro(self):
         usuario = self.user_entry.get()
         password = self.pass_entry.get()
